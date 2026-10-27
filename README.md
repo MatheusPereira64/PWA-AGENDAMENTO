@@ -2,7 +2,19 @@
 
 Agendamento online para salões, barbearias, clínicas e profissionais autônomos. O cliente escolhe um horário que existe de verdade; o negócio acompanha a agenda, os clientes e a receita estimada.
 
-[![CI](https://github.com/mp-software/mp-agenda/actions/workflows/ci.yml/badge.svg)](https://github.com/mp-software/mp-agenda/actions/workflows/ci.yml)
+[![CI](https://github.com/MatheusPereira64/PWA-AGENDAMENTO/actions/workflows/ci.yml/badge.svg)](https://github.com/MatheusPereira64/PWA-AGENDAMENTO/actions/workflows/ci.yml)
+
+## Telas
+
+A demonstração local é o Studio Aurora. As imagens abaixo foram feitas nesse ambiente.
+
+| Página inicial | Agendamento público |
+| --- | --- |
+| ![Página inicial do MP Agenda, com o convite para ver a demonstração](docs/imagens/inicio.png) | ![Página pública do Studio Aurora, com serviço, profissional e horários livres](docs/imagens/agendamento.png) |
+
+| Painel | Agenda |
+| --- | --- |
+| ![Painel com atendimentos do dia, clientes e receita estimada](docs/imagens/painel.png) | ![Agenda da semana, com horários e a mudança de status](docs/imagens/agenda.png) |
 
 - Demo: `PREENCHER_COM_URL_REAL_DA_VERCEL`
 - API: `PREENCHER_COM_URL_REAL_DO_RENDER`
