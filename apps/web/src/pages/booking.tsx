@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { toast } from 'sonner'
 import { OfflineBanner } from '@/components/offline-banner'
 import { useOnline } from '@/components/offline-banner'
-import { Badge, Button, Card, Field, Input } from '@/components/ui'
+import { Badge, Button, Card, ConfirmDialog, Field, Input, Skeleton } from '@/components/ui'
 import { api, ApiError } from '@/lib/api'
 import { formatDateTime, formatMoney } from '@/lib/format'
 import type { AppointmentItem, ProfessionalItem, PublicBusiness, ServiceItem, Slot } from '@/lib/types'
@@ -26,6 +26,7 @@ export function BookingPage() {
   const [date, setDate] = useState('')
   const [slot, setSlot] = useState<Slot>()
   const [customer, setCustomer] = useState({ name: '', phone: '', email: '' })
+  const [submitError, setSubmitError] = useState<string>()
 
   const professionals = useQuery({
     queryKey: ['public-professionals', slug, serviceId],
@@ -63,16 +64,25 @@ export function BookingPage() {
           }),
         },
       ),
+    onMutate: () => setSubmitError(undefined),
     onSuccess: (result) => {
       navigate(`/b/${slug}/confirmacao`, { state: { ...result, timezone: profile?.timezone ?? 'America/Sao_Paulo' } })
     },
-    onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : 'Não foi possível agendar')
+    onError: (caught) => {
+      setSubmitError(caught instanceof ApiError ? caught.message : 'Não foi possível agendar')
     },
   })
 
   const profile = business.data?.business
-  if (business.isLoading) return <p className="p-8">Carregando o negócio…</p>
+  if (business.isLoading) {
+    return (
+      <main className="mx-auto grid max-w-3xl gap-3 px-4 py-8" aria-busy="true">
+        <Skeleton className="h-12 w-72" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-40" />
+      </main>
+    )
+  }
   if (business.isError || !profile) return <p className="p-8">Negócio não encontrado.</p>
 
   return (
@@ -104,7 +114,7 @@ export function BookingPage() {
                 }}
               >
                 <strong>{service.name}</strong>
-                <p className="text-sm text-muted">
+                <p className="text-sm text-muted tabular-nums">
                   {service.durationMinutes} min · {formatMoney(service.price)}
                 </p>
               </button>
@@ -136,7 +146,13 @@ export function BookingPage() {
           <section className="mt-8">
             <h2 className="font-serif text-2xl">3. Data e horário</h2>
             <Input className="mt-3 max-w-xs" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-            {availability.isLoading ? <p className="mt-3 text-sm">Consultando horários reais…</p> : null}
+            {availability.isLoading ? (
+              <div className="mt-3 flex flex-wrap gap-2" aria-busy="true">
+                {['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].map((item) => (
+                  <Skeleton key={item} className="h-11 w-24" />
+                ))}
+              </div>
+            ) : null}
             {availability.isError ? <p className="mt-3 text-sm text-danger">Não foi possível consultar a agenda.</p> : null}
             {availability.data?.slots.length === 0 ? <p className="mt-3 text-sm">Nenhum horário livre nesta data.</p> : null}
             <div className="mt-3 flex flex-wrap gap-2">
@@ -163,6 +179,7 @@ export function BookingPage() {
                 <Input value={customer.email} onChange={(event) => setCustomer({ ...customer, email: event.target.value })} />
               </Field>
               {!online ? <p className="text-sm text-danger">Sem conexão. O agendamento não será enviado.</p> : null}
+              {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
               <Button
                 disabled={!online || create.isPending || customer.name.length < 2 || customer.phone.replace(/\D/g, '').length < 10}
                 onClick={() => create.mutate()}
@@ -209,7 +226,7 @@ export function ConfirmationPage() {
       <p className="mt-3">
         {formatDateTime(state.appointment.startsAt, state.timezone ?? 'America/Sao_Paulo')} com {state.appointment.professional.name}
       </p>
-      <p className="text-muted">{formatMoney(state.appointment.price)}</p>
+      <p className="text-muted tabular-nums">{formatMoney(state.appointment.price)}</p>
       {state.managePath ? (
         <p className="mt-6 text-sm">
           Guarde este link para consultar ou cancelar:{' '}
@@ -236,6 +253,8 @@ export function ManageAppointmentPage() {
         { business: false },
       ),
   })
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const [error, setError] = useState<string>()
   const cancel = useMutation({
     mutationFn: () =>
       api(`/api/public/appointments/${id}/cancel`, {
@@ -244,13 +263,21 @@ export function ManageAppointmentPage() {
         body: JSON.stringify({ token }),
       }),
     onSuccess: () => {
+      setError(undefined)
       toast.success('Agendamento cancelado')
       query.refetch()
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : 'Não foi possível cancelar'),
+    onError: (caught) => setError(caught instanceof ApiError ? caught.message : 'Não foi possível cancelar'),
   })
   if (!token) return <p className="p-8">Link incompleto.</p>
-  if (query.isLoading) return <p className="p-8">Carregando…</p>
+  if (query.isLoading) {
+    return (
+      <main className="mx-auto grid max-w-lg gap-3 px-4 py-12" aria-busy="true">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-16" />
+      </main>
+    )
+  }
   if (query.isError || !query.data) return <p className="p-8">Agendamento não encontrado.</p>
   const { appointment, business } = query.data
   return (
@@ -258,16 +285,26 @@ export function ManageAppointmentPage() {
       <OfflineBanner />
       <p className="text-sm text-muted">{business.name}</p>
       <h1 className="font-serif text-4xl">{appointment.service.name}</h1>
-      <p className="mt-2">{formatDateTime(appointment.startsAt, business.timezone)}</p>
+      <p className="mt-2 tabular-nums">{formatDateTime(appointment.startsAt, business.timezone)}</p>
       <p>{appointment.professional.name}</p>
       <p className="mt-2 text-sm text-muted">Cancelamento até {business.cancelMinHours}h antes.</p>
       {appointment.status !== 'CANCELLED' ? (
-        <Button className="mt-6" variant="danger" disabled={!online || cancel.isPending} onClick={() => cancel.mutate()}>
+        <Button className="mt-6" variant="danger" disabled={!online || cancel.isPending} onClick={() => setConfirmCancel(true)}>
           Cancelar agendamento
         </Button>
       ) : (
         <p className="mt-6">Este horário foi cancelado.</p>
       )}
+      {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+      <ConfirmDialog
+        open={confirmCancel}
+        title="Cancelar agendamento"
+        text="O horário deixa de ser seu. Confirme só se realmente não puder comparecer."
+        confirmLabel="Cancelar agendamento"
+        pending={cancel.isPending}
+        onOpenChange={setConfirmCancel}
+        onConfirm={() => cancel.mutate()}
+      />
     </main>
   )
 }

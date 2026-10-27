@@ -24,7 +24,7 @@ export function AppShell() {
   const visible = links.filter((link) => role && link.roles.includes(role))
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-dvh">
       <OfflineBanner />
       {needRefresh ? (
         <div className="flex items-center justify-between gap-3 bg-brass/30 px-4 py-2 text-sm">
@@ -42,7 +42,7 @@ export function AppShell() {
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-5 md:grid-cols-[220px_1fr]">
         <aside className="flex flex-col gap-4">
           <div>
-            <p className="text-xs tracking-[0.18em] text-muted uppercase">MP Software</p>
+            <p className="text-xs text-muted uppercase">MP Software</p>
             <p className="font-serif text-3xl">Agenda</p>
           </div>
           {user && user.memberships.length > 1 ? (

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DateTime } from 'luxon'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Badge, Button, Empty, Field, Input, Modal, Select, statusTone } from '@/components/ui'
+import { Badge, Button, ConfirmDialog, Empty, Field, Input, Modal, Select, Skeleton, statusTone } from '@/components/ui'
 import { api, ApiError } from '@/lib/api'
 import { useMembership } from '@/lib/auth'
 import { formatTime } from '@/lib/format'
@@ -98,12 +98,22 @@ export function AgendaPage() {
           </Select>
         ) : null}
       </div>
-      {appointments.isLoading ? <p>Carregando agenda…</p> : null}
+      {appointments.isLoading ? (
+        <div className="grid gap-2" aria-busy="true">
+          {['manha', 'tarde', 'noite'].map((item) => (
+            <Skeleton key={item} className="h-20" />
+          ))}
+        </div>
+      ) : null}
       {appointments.isError ? <p className="text-danger">Não foi possível carregar a agenda.</p> : null}
       {view === 'month' ? (
         <MonthGrid zone={zone} anchor={day} items={appointments.data?.data ?? []} onPick={(iso) => { setCursor(iso); setView('day') }} />
       ) : appointments.data?.data.length === 0 ? (
-        <Empty title="Agenda livre" text="Nenhum atendimento neste recorte." />
+        <Empty
+          title="Agenda livre"
+          text="Nenhum atendimento neste recorte."
+          action={membership?.role !== 'CUSTOMER' ? <Button onClick={() => setOpen(true)}>Novo horário</Button> : undefined}
+        />
       ) : (
         <div className="grid gap-2">
           {appointments.data?.data.map((item) => (
@@ -118,21 +128,24 @@ export function AgendaPage() {
 
 function AppointmentRow({ item, zone, canEdit }: { item: AppointmentItem; zone: string; canEdit: boolean }) {
   const client = useQueryClient()
+  const [confirmCancel, setConfirmCancel] = useState(false)
+  const [error, setError] = useState<string>()
   const update = useMutation({
     mutationFn: (status: AppointmentStatus) =>
       api(`/api/appointments/${item.id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
     onSuccess: () => {
+      setError(undefined)
       toast.success('Agenda atualizada')
       client.invalidateQueries({ queryKey: ['appointments'] })
       client.invalidateQueries({ queryKey: ['summary'] })
     },
-    onError: (error) => toast.error(error instanceof ApiError ? error.message : 'Falha ao atualizar'),
+    onError: (caught) => setError(caught instanceof ApiError ? caught.message : 'Falha ao atualizar'),
   })
   return (
     <article className="grid gap-2 rounded-3xl border border-line bg-card p-4 md:grid-cols-[8rem_1fr_auto]">
       <div>
-        <p className="font-medium">{formatTime(item.startsAt, zone)}</p>
-        <p className="text-xs text-muted">{formatTime(item.endsAt, zone)}</p>
+        <p className="font-medium tabular-nums">{formatTime(item.startsAt, zone)}</p>
+        <p className="text-xs text-muted tabular-nums">{formatTime(item.endsAt, zone)}</p>
       </div>
       <div>
         <p className="font-medium">{item.customer.name}</p>
@@ -146,17 +159,32 @@ function AppointmentRow({ item, zone, canEdit }: { item: AppointmentItem; zone: 
           ? (['CONFIRMED', 'COMPLETED', 'NO_SHOW', 'CANCELLED'] as AppointmentStatus[])
               .filter((status) => canTransition(item.status, status))
               .map((status) => (
-                <Button key={status} variant="line" disabled={update.isPending} onClick={() => update.mutate(status)}>
+                <Button
+                  key={status}
+                  variant="line"
+                  disabled={update.isPending}
+                  onClick={() => (status === 'CANCELLED' ? setConfirmCancel(true) : update.mutate(status))}
+                >
                   {statusLabel(status)}
                 </Button>
               ))
           : null}
         {!canEdit && item.status !== 'CANCELLED' ? (
-          <Button variant="line" onClick={() => update.mutate('CANCELLED')}>
+          <Button variant="line" onClick={() => setConfirmCancel(true)}>
             Cancelar
           </Button>
         ) : null}
       </div>
+      {error ? <p className="text-sm text-danger md:col-span-3">{error}</p> : null}
+      <ConfirmDialog
+        open={confirmCancel}
+        title="Cancelar horário"
+        text="O horário volta a ficar disponível. Essa ação não pode ser desfeita pelo cliente."
+        confirmLabel="Cancelar horário"
+        pending={update.isPending}
+        onOpenChange={setConfirmCancel}
+        onConfirm={() => update.mutate('CANCELLED')}
+      />
     </article>
   )
 }

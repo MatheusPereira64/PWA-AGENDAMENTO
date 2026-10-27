@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Badge, Button, Card, Empty, Field, Input, Modal, Textarea } from '@/components/ui'
+import { Badge, Button, Card, ConfirmDialog, Empty, Field, Input, Modal, Skeleton, Textarea } from '@/components/ui'
 import { api, ApiError } from '@/lib/api'
 import { useMembership } from '@/lib/auth'
 import { formatDateTime, formatMoney, weekdayLabel } from '@/lib/format'
@@ -33,8 +33,20 @@ export function CustomersPage() {
         {membership?.role === 'ADMIN' ? <Button onClick={() => setOpen(true)}>Novo cliente</Button> : null}
       </header>
       <Input placeholder="Nome, telefone ou e-mail" value={q} onChange={(event) => { setQ(event.target.value); setPage(1) }} aria-label="Buscar clientes" />
-      {query.isLoading ? <p>Carregando…</p> : null}
-      {query.data?.data.length === 0 ? <Empty title="Nenhum cliente" text="Os clientes aparecem aqui quando alguém agenda ou é cadastrado." /> : null}
+      {query.isLoading ? (
+        <div className="grid gap-2" aria-busy="true">
+          {['a', 'b', 'c'].map((item) => (
+            <Skeleton key={item} className="h-16" />
+          ))}
+        </div>
+      ) : null}
+      {query.data?.data.length === 0 ? (
+        <Empty
+          title="Nenhum cliente"
+          text="Os clientes aparecem aqui quando alguém agenda ou é cadastrado."
+          action={membership?.role === 'ADMIN' ? <Button onClick={() => setOpen(true)}>Cadastrar cliente</Button> : undefined}
+        />
+      ) : null}
       <div className="grid gap-2">
         {query.data?.data.map((customer) => (
           <Link key={customer.id} to={`/app/clientes/${customer.id}`} className="rounded-3xl border border-line bg-card p-4">
@@ -56,7 +68,7 @@ export function CustomerDetailPage() {
     queryKey: ['customer', id],
     queryFn: () => api<{ customer: Customer; appointments: AppointmentItem[] }>(`/api/customers/${id}`),
   })
-  if (query.isLoading) return <p>Carregando ficha…</p>
+  if (query.isLoading) return <Skeleton className="h-40" />
   if (query.isError || !query.data) return <p>Cliente não encontrado.</p>
   const zone = membership?.business.timezone ?? 'America/Sao_Paulo'
   return (
@@ -66,11 +78,17 @@ export function CustomerDetailPage() {
       <p className="text-muted">{query.data.customer.phone} · {query.data.customer.email}</p>
       {query.data.customer.notes ? <p>{query.data.customer.notes}</p> : null}
       <h2 className="font-serif text-2xl">Histórico</h2>
-      {query.data.appointments.length === 0 ? <Empty title="Sem atendimentos" text="O histórico fica nesta ficha." /> : null}
+      {query.data.appointments.length === 0 ? (
+        <Empty
+          title="Sem atendimentos"
+          text="O histórico fica nesta ficha."
+          action={<Button asChild><Link to="/app/agenda">Abrir a agenda</Link></Button>}
+        />
+      ) : null}
       {query.data.appointments.map((item) => (
         <div key={item.id} className="rounded-2xl border border-line p-3">
-          <p>{formatDateTime(item.startsAt, zone)} · {item.service.name}</p>
-          <p className="text-sm text-muted">{item.professional.name} · {formatMoney(item.price)}</p>
+          <p className="tabular-nums">{formatDateTime(item.startsAt, zone)} · {item.service.name}</p>
+          <p className="text-sm text-muted tabular-nums">{item.professional.name} · {formatMoney(item.price)}</p>
         </div>
       ))}
     </div>
@@ -107,6 +125,7 @@ export function ServicesPage() {
   const client = useQueryClient()
   const query = useQuery({ queryKey: ['services'], queryFn: () => api<Page<ServiceItem>>('/api/services?pageSize=100') })
   const [form, setForm] = useState({ name: '', durationMinutes: '60', price: '', description: '' })
+  const [pendingId, setPendingId] = useState<string | null>(null)
   const create = useMutation({
     mutationFn: () =>
       api('/api/services', {
@@ -146,12 +165,26 @@ export function ServicesPage() {
           <div key={service.id} className="flex items-center justify-between rounded-3xl border border-line bg-card p-4">
             <div>
               <p className="font-medium">{service.name} {!service.active ? <Badge>Arquivado</Badge> : null}</p>
-              <p className="text-sm text-muted">{service.durationMinutes} min · {formatMoney(service.price)} · intervalo {service.bufferMinutes} min</p>
+              <p className="text-sm text-muted tabular-nums">{service.durationMinutes} min · {formatMoney(service.price)} · intervalo {service.bufferMinutes} min</p>
             </div>
-            <Button variant="line" onClick={() => remove.mutate(service.id)}>Remover</Button>
+            <Button variant="line" onClick={() => setPendingId(service.id)}>Remover</Button>
           </div>
         ))}
       </div>
+      <ConfirmDialog
+        open={pendingId !== null}
+        title="Remover serviço"
+        text="Se já houver histórico, o serviço é arquivado. Sem histórico, ele sai da lista."
+        confirmLabel="Remover"
+        pending={remove.isPending}
+        onOpenChange={(open) => {
+          if (!open) setPendingId(null)
+        }}
+        onConfirm={() => {
+          if (!pendingId) return
+          remove.mutate(pendingId, { onSuccess: () => setPendingId(null) })
+        }}
+      />
     </div>
   )
 }
@@ -325,11 +358,17 @@ export function AuditPage() {
   return (
     <div className="grid gap-3">
       <h1 className="font-serif text-4xl">Auditoria</h1>
-      {query.data?.data.length === 0 ? <Empty title="Sem eventos" text="As ações administrativas aparecem aqui." /> : null}
+      {query.data?.data.length === 0 ? (
+        <Empty
+          title="Sem eventos"
+          text="As ações administrativas aparecem aqui."
+          action={<Button asChild variant="line"><Link to="/app">Voltar ao painel</Link></Button>}
+        />
+      ) : null}
       {query.data?.data.map((item) => (
         <div key={item.id} className="rounded-2xl border border-line bg-card px-4 py-3 text-sm">
           <strong>{item.action}</strong>
-          <p className="text-muted">{item.entityType} · {new Date(item.createdAt).toLocaleString('pt-BR')}</p>
+          <p className="text-muted tabular-nums">{item.entityType} · {new Date(item.createdAt).toLocaleString('pt-BR')}</p>
         </div>
       ))}
     </div>

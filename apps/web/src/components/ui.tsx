@@ -1,3 +1,4 @@
+import * as AlertDialog from '@radix-ui/react-alert-dialog'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as LabelPrimitive from '@radix-ui/react-label'
 import { Slot } from '@radix-ui/react-slot'
@@ -7,7 +8,7 @@ import { type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, ty
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-200 ease-out disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
@@ -66,7 +67,7 @@ export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLS
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <section className={cn('rounded-3xl border border-line bg-card p-5 shadow-[0_1px_0_rgba(18,38,31,0.04)]', className)}>{children}</section>
+  return <section className={cn('rounded-3xl border border-line bg-card p-5 shadow-sm', className)}>{children}</section>
 }
 
 export function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'neutral' | 'good' | 'warn' | 'bad' }) {
@@ -107,7 +108,7 @@ export function Modal({
         <Dialog.Content className="fixed top-1/2 left-1/2 z-50 max-h-[90vh] w-[min(100%-1.5rem,36rem)] -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-3xl bg-card p-5 shadow-xl">
           <div className="mb-4 flex items-start justify-between gap-4">
             <Dialog.Title className="font-serif text-2xl">{title}</Dialog.Title>
-            <Dialog.Close className="rounded-full p-2 hover:bg-paper" aria-label="Fechar">
+            <Dialog.Close className="inline-flex size-10 items-center justify-center rounded-full hover:bg-paper" aria-label="Fechar">
               <X size={18} />
             </Dialog.Close>
           </div>
@@ -118,12 +119,57 @@ export function Modal({
   )
 }
 
-export function Empty({ title, text }: { title: string; text: string }) {
+export function Empty({ title, text, action }: { title: string; text: string; action?: ReactNode }) {
   return (
     <div className="rounded-3xl border border-dashed border-line px-4 py-10 text-center">
       <p className="font-serif text-2xl">{title}</p>
       <p className="mt-2 text-sm text-muted">{text}</p>
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </div>
+  )
+}
+
+export function Skeleton({ className }: { className?: string }) {
+  return <div className={cn('rounded-2xl bg-line', className)} aria-hidden="true" />
+}
+
+export function ConfirmDialog({
+  open,
+  title,
+  text,
+  confirmLabel,
+  pending,
+  onOpenChange,
+  onConfirm,
+}: {
+  open: boolean
+  title: string
+  text: string
+  confirmLabel: string
+  pending?: boolean
+  onOpenChange: (open: boolean) => void
+  onConfirm: () => void
+}) {
+  return (
+    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
+      <AlertDialog.Portal>
+        <AlertDialog.Overlay className="fixed inset-0 z-40 bg-ink/40" />
+        <AlertDialog.Content className="fixed top-1/2 left-1/2 z-50 w-[min(100%-1.5rem,28rem)] -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-card p-5 shadow-sm">
+          <AlertDialog.Title className="font-serif text-2xl">{title}</AlertDialog.Title>
+          <AlertDialog.Description className="mt-2 text-sm text-muted">{text}</AlertDialog.Description>
+          <div className="mt-5 flex justify-end gap-2">
+            <AlertDialog.Cancel asChild>
+              <Button variant="line">Cancelar</Button>
+            </AlertDialog.Cancel>
+            <AlertDialog.Action asChild>
+              <Button variant="danger" onClick={onConfirm} disabled={pending}>
+                {confirmLabel}
+              </Button>
+            </AlertDialog.Action>
+          </div>
+        </AlertDialog.Content>
+      </AlertDialog.Portal>
+    </AlertDialog.Root>
   )
 }
 

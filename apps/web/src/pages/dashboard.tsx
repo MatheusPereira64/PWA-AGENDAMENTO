@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { statusLabel } from '@mp-agenda/shared'
 import { useState } from 'react'
-import { Badge, Card, Empty, Select } from '@/components/ui'
+import { Link } from 'react-router-dom'
+import { Badge, Button, Card, Empty, Select, Skeleton } from '@/components/ui'
 import { api } from '@/lib/api'
 import { useMembership } from '@/lib/auth'
 import { formatDateTime, formatMoney } from '@/lib/format'
@@ -42,7 +43,15 @@ export function DashboardPage() {
     },
   })
 
-  if (query.isLoading) return <p>Calculando indicadores…</p>
+  if (query.isLoading) {
+    return (
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-busy="true">
+        {['hoje', 'clientes', 'cancelamentos', 'receita'].map((item) => (
+          <Skeleton key={item} className="h-28" />
+        ))}
+      </div>
+    )
+  }
   if (query.isError || !query.data) return <p>Não foi possível carregar o painel.</p>
   const summary = query.data
 
@@ -74,7 +83,17 @@ export function DashboardPage() {
         <Card>
           <h2 className="font-serif text-2xl">Próximos</h2>
           <div className="mt-3 grid gap-3">
-            {summary.upcoming.length === 0 ? <Empty title="Nada à frente" text="Os próximos horários aparecem aqui." /> : null}
+            {summary.upcoming.length === 0 ? (
+              <Empty
+                title="Nada à frente"
+                text="Os próximos horários aparecem aqui."
+                action={
+                  <Button asChild variant="line">
+                    <Link to="/app/agenda">Abrir a agenda</Link>
+                  </Button>
+                }
+              />
+            ) : null}
             {summary.upcoming.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-3 border-b border-line pb-2">
                 <div>
@@ -83,7 +102,7 @@ export function DashboardPage() {
                     {item.serviceName} · {item.professionalName}
                   </p>
                 </div>
-                <div className="text-right text-sm">
+                <div className="text-right text-sm tabular-nums">
                   <p>{formatDateTime(item.startsAt, zone)}</p>
                   <Badge>{statusLabel(item.status as 'PENDING')}</Badge>
                 </div>
@@ -95,14 +114,16 @@ export function DashboardPage() {
           <h2 className="font-serif text-2xl">Serviços no período</h2>
           <p className="text-sm text-muted">
             Comparecimento:{' '}
-            {summary.attendance.rate === null ? 'sem base ainda' : `${Math.round(summary.attendance.rate * 100)}%`}
+            <span className="tabular-nums">
+              {summary.attendance.rate === null ? 'sem base ainda' : `${Math.round(summary.attendance.rate * 100)}%`}
+            </span>
           </p>
           <ul className="mt-3 space-y-2">
             {summary.topServices.length === 0 ? <li className="text-sm text-muted">Nenhum serviço no período.</li> : null}
             {summary.topServices.map((service) => (
               <li key={service.serviceId} className="flex justify-between">
                 <span>{service.name}</span>
-                <strong>{service.count}</strong>
+                <strong className="tabular-nums">{service.count}</strong>
               </li>
             ))}
           </ul>
@@ -116,7 +137,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <Card>
       <p className="text-sm text-muted">{label}</p>
-      <p className="font-serif text-3xl">{value}</p>
+      <p className="font-serif text-3xl tabular-nums">{value}</p>
     </Card>
   )
 }

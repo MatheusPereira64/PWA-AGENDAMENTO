@@ -19,7 +19,7 @@ function Brand() {
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-dvh">
       <OfflineBanner />
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <Brand />
@@ -34,7 +34,7 @@ export function LandingPage() {
       </header>
       <main className="mx-auto grid max-w-6xl gap-10 px-4 py-8 md:grid-cols-[1.2fr_0.8fr] md:py-16">
         <div>
-          <p className="text-sm tracking-[0.16em] text-pine uppercase">MP Software</p>
+          <p className="text-sm text-pine uppercase">MP Software</p>
           <h1 className="mt-3 font-serif text-5xl leading-tight md:text-6xl">
             A agenda do seu negócio, sem caderno e sem horário duplicado.
           </h1>
@@ -227,9 +227,9 @@ export function ResetPasswordPage() {
 
 function AuthFrame({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-dvh">
       <OfflineBanner />
-      <main className="mx-auto grid min-h-screen max-w-md content-center px-4 py-10">
+      <main className="mx-auto grid min-h-dvh max-w-md content-center px-4 py-10">
         <Brand />
         <h1 className="mt-6 font-serif text-4xl">{title}</h1>
         <p className="mt-2 mb-6 text-muted">{subtitle}</p>

@@ -20,7 +20,15 @@ export function OfflineBanner() {
   const online = useOnline()
   if (online) return null
   return (
-    <div className="flex items-center gap-2 bg-ink px-4 py-2 text-sm text-paper" role="status">
+    <div
+      className="flex items-center gap-2 bg-ink px-4 py-2 text-sm text-paper"
+      style={{
+        paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
+        paddingRight: 'max(1rem, env(safe-area-inset-right))',
+        paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+      }}
+      role="status"
+    >
       <WifiOff size={16} />
       Sem conexão. Você pode consultar o que já estava aberto. Agendamentos não são confirmados offline.
     </div>
