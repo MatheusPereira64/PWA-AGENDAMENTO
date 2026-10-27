@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: mp-agenda-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build -w @mp-agenda/shared && npm run build -w @mp-agenda/api
+    startCommand: npm run start -w @mp-agenda/api
+    preDeployCommand: npm exec -w @mp-agenda/api -- prisma migrate deploy
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mp-agenda-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL_DAYS
+        value: "14"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: CORS_ORIGIN
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: CRON_SECRET
+        generateValue: true
+
+databases:
+  - name: mp-agenda-db
+    plan: free
+    databaseName: mpagenda
+    user: mpagenda

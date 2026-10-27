@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mpagenda_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mpagenda_test?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret-with-32-characters
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL_DAYS: "14"
+      CORS_ORIGIN: http://localhost:5173
+      APP_URL: http://localhost:5173
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run build -w @mp-agenda/shared
+      - run: npm exec -w @mp-agenda/api -- prisma generate
+      - run: npm run db:prepare
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test -w @mp-agenda/api
+      - run: npm run build -w @mp-agenda/api
+      - run: npm run build -w @mp-agenda/web

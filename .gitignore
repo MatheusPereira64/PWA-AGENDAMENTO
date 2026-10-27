@@ -1,0 +1,16 @@
+node_modules
+dist
+.data
+.env
+.env.*
+!.env.example
+coverage
+*.log
+.DS_Store
+Thumbs.db
+apps/web/dev-dist
+apps/web/dist
+apps/api/dist
+packages/shared/dist
+.vercel
+*.tsbuildinfo
